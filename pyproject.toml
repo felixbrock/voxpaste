@@ -1,0 +1,16 @@
+[project]
+name = "instruction-transcriber"
+version = "0.1.0"
+description = "Record audio and transcribe via Mistral Voxtral Mini API"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "sounddevice>=0.4.6",
+    "numpy>=1.26.0",
+    "httpx>=0.27.0",
+    "scipy>=1.12.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+transcribe = "main:main"
