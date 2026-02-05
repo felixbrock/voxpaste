@@ -12,14 +12,14 @@
 
 ---
 
-**Voxpaste** is a lightweight CLI tool that turns your voice into text and drops it straight into your clipboard—ready to paste into any system that can handle textual noise and natural speech imperfections, like Claude, ChatGPT, Cursor, or other LLM-powered tools.
+**Voxpaste** is a lightweight CLI tool with **multi-provider support** that turns your voice into text and drops it straight into your clipboard. Choose from Mistral, OpenAI, Groq, or Deepgram—ready to paste into Claude, ChatGPT, Cursor, or any LLM-powered tool that can handle natural speech.
 
 Stop typing long prompts. Start speaking them.
 
 ### Why Voxpaste?
 
-- **Blazing fast** — Sub-second transcription latency
-- **Multiple providers** — Choose from Mistral, OpenAI, Groq, or Deepgram
+- **Multiple providers** — Choose from Mistral, OpenAI, Groq, or Deepgram—not locked into a single service
+- **Blazing fast** — Sub-second transcription latency with optimized providers
 - **Zero friction** — Record → transcribe → clipboard, all in one command
 - **Built for AI workflows** — Designed for developers who talk to LLMs all day. Bind it to a hotkey and invoke it from anywhere
 - **Privacy-conscious** — Your audio goes directly to your chosen provider, no middlemen
