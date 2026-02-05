@@ -81,6 +81,22 @@ This makes the `voxpaste` command available system-wide.
 pipx install git+https://github.com/felixbrock/voxpaste.git
 ```
 
+### Install with pip
+
+```bash
+pip install git+https://github.com/felixbrock/voxpaste.git
+```
+
+Or from a local clone:
+
+```bash
+git clone https://github.com/felixbrock/voxpaste.git
+cd voxpaste
+pip install .
+```
+
+Note: Using `uv` or `pipx` is recommended for CLI tools as they create isolated environments and avoid conflicts with system packages.
+
 ## Configuration
 
 ### Choosing a Provider
