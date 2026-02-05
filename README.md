@@ -103,18 +103,31 @@ Note: Using `uv` or `pipx` is recommended for CLI tools as they create isolated 
 
 Voxpaste supports multiple speech-to-text providers. Set `VOXPASTE_PROVIDER` to choose one:
 
-| Provider | Value               | Model            | Notes                                |
+| Provider | Value               | Default Model    | Notes                                |
 | -------- | ------------------- | ---------------- | ------------------------------------ |
-| Mistral  | `mistral` (default) | Voxtral Mini     | **Best latency**, good accuracy      |
-| Groq     | `groq`              | Whisper Large v3 | **Best latency**, generous free tier |
-| OpenAI   | `openai`            | Whisper          | Most widely used, higher latency     |
-| Deepgram | `deepgram`          | Nova-2           | Real-time focused, higher latency    |
+| Mistral  | `mistral` (default) | voxtral-mini-latest     | **Best latency**, good accuracy      |
+| Groq     | `groq`              | whisper-large-v3 | **Best latency**, generous free tier |
+| OpenAI   | `openai`            | whisper-1        | Most widely used, higher latency     |
+| Deepgram | `deepgram`          | nova-2           | Real-time focused, higher latency    |
 
 **Recommended:** Use Mistral or Groq for the fastest transcription experience.
 
+### Choosing a Model
+
+You can customize which model to use for each provider by setting the corresponding environment variable:
+
+| Provider | Environment Variable | Default Value         | Other Options                           |
+| -------- | -------------------- | --------------------- | --------------------------------------- |
+| Mistral  | `MISTRAL_MODEL`      | `voxtral-mini-latest` | Check [Mistral docs](https://docs.mistral.ai/) for available models |
+| OpenAI   | `OPENAI_MODEL`       | `whisper-1`           | Currently only `whisper-1` is available |
+| Groq     | `GROQ_MODEL`         | `whisper-large-v3`    | `whisper-large-v3-turbo`, `distil-whisper-large-v3-en` |
+| Deepgram | `DEEPGRAM_MODEL`     | `nova-2`              | `nova`, `enhanced`, `base` - see [Deepgram docs](https://developers.deepgram.com/docs/model) |
+
+If not specified, the default model for each provider will be used.
+
 ### Setting up your API key
 
-Configuration is stored in `~/.config/voxpaste/.env`.
+Configuration is stored in `~/.config/voxpaste/.env`. See [`.env.example`](.env.example) for a complete configuration template.
 
 1. Create the config directory:
 
@@ -139,6 +152,16 @@ Configuration is stored in `~/.config/voxpaste/.env`.
    # For Deepgram
    echo "VOXPASTE_PROVIDER=deepgram" > ~/.config/voxpaste/.env
    echo "DEEPGRAM_API_KEY=your-api-key-here" >> ~/.config/voxpaste/.env
+   ```
+
+   **Optional:** Customize the model for your chosen provider:
+
+   ```bash
+   # Example: Use a different Groq model
+   echo "GROQ_MODEL=whisper-large-v3-turbo" >> ~/.config/voxpaste/.env
+
+   # Example: Use a different Deepgram model
+   echo "DEEPGRAM_MODEL=nova" >> ~/.config/voxpaste/.env
    ```
 
 3. Secure the file:

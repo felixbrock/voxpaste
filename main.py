@@ -36,16 +36,17 @@ class MistralProvider:
     """Mistral Voxtral Mini provider."""
 
     API_URL = "https://api.mistral.ai/v1/audio/transcriptions"
-    MODEL = "voxtral-mini-latest"
+    DEFAULT_MODEL = "voxtral-mini-latest"
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, model: str | None = None):
         self.api_key = api_key
+        self.model = model or self.DEFAULT_MODEL
 
     def transcribe(self, audio_bytes: bytes) -> str:
         response = httpx.post(
             self.API_URL,
             files={"file": ("recording.wav", audio_bytes, "audio/wav")},
-            data={"model": self.MODEL},
+            data={"model": self.model},
             headers={"Authorization": f"Bearer {self.api_key}"},
             timeout=120.0,
         )
@@ -63,16 +64,17 @@ class OpenAIProvider:
     """OpenAI Whisper provider."""
 
     API_URL = "https://api.openai.com/v1/audio/transcriptions"
-    MODEL = "whisper-1"
+    DEFAULT_MODEL = "whisper-1"
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, model: str | None = None):
         self.api_key = api_key
+        self.model = model or self.DEFAULT_MODEL
 
     def transcribe(self, audio_bytes: bytes) -> str:
         response = httpx.post(
             self.API_URL,
             files={"file": ("recording.wav", audio_bytes, "audio/wav")},
-            data={"model": self.MODEL},
+            data={"model": self.model},
             headers={"Authorization": f"Bearer {self.api_key}"},
             timeout=120.0,
         )
@@ -90,16 +92,17 @@ class GroqProvider:
     """Groq Whisper provider."""
 
     API_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
-    MODEL = "whisper-large-v3"
+    DEFAULT_MODEL = "whisper-large-v3"
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, model: str | None = None):
         self.api_key = api_key
+        self.model = model or self.DEFAULT_MODEL
 
     def transcribe(self, audio_bytes: bytes) -> str:
         response = httpx.post(
             self.API_URL,
             files={"file": ("recording.wav", audio_bytes, "audio/wav")},
-            data={"model": self.MODEL},
+            data={"model": self.model},
             headers={"Authorization": f"Bearer {self.api_key}"},
             timeout=120.0,
         )
@@ -116,14 +119,17 @@ class GroqProvider:
 class DeepgramProvider:
     """Deepgram Nova-2 provider."""
 
-    API_URL = "https://api.deepgram.com/v1/listen?model=nova-2"
+    API_BASE_URL = "https://api.deepgram.com/v1/listen"
+    DEFAULT_MODEL = "nova-2"
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, model: str | None = None):
         self.api_key = api_key
+        self.model = model or self.DEFAULT_MODEL
 
     def transcribe(self, audio_bytes: bytes) -> str:
+        url = f"{self.API_BASE_URL}?model={self.model}"
         response = httpx.post(
-            self.API_URL,
+            url,
             content=audio_bytes,
             headers={
                 "Authorization": f"Token {self.api_key}",
@@ -162,6 +168,12 @@ def get_provider() -> Provider:
         "groq": "GROQ_API_KEY",
         "deepgram": "DEEPGRAM_API_KEY",
     }
+    model_env_map = {
+        "mistral": "MISTRAL_MODEL",
+        "openai": "OPENAI_MODEL",
+        "groq": "GROQ_MODEL",
+        "deepgram": "DEEPGRAM_MODEL",
+    }
     provider_classes = {
         "mistral": MistralProvider,
         "openai": OpenAIProvider,
@@ -179,7 +191,17 @@ def get_provider() -> Provider:
         )
         sys.exit(1)
 
-    return provider_classes[provider_name](api_key)
+    # Get custom model if specified
+    model_env_name = model_env_map[provider_name]
+    model = os.environ.get(model_env_name)
+
+    provider = provider_classes[provider_name](api_key, model)
+
+    # Show which model is being used
+    if hasattr(provider, 'model'):
+        print(f"Using model: {provider.model}")
+
+    return provider
 
 
 def record_audio() -> np.ndarray:

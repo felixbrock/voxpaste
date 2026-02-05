@@ -42,4 +42,4 @@ packages = ["."]
 only-include = ["main.py"]
 
 [tool.hatch.build.targets.sdist]
-only-include = ["main.py", "README.md", "LICENSE", "pyproject.toml"]
+only-include = ["main.py", "README.md", "LICENSE", "pyproject.toml", ".env.example"]
