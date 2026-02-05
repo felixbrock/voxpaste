@@ -50,7 +50,10 @@ class MistralProvider:
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(f"Error: API request failed with status {response.status_code}", file=sys.stderr)
+            print(
+                f"Error: API request failed with status {response.status_code}",
+                file=sys.stderr,
+            )
             print(f"Response: {response.text}", file=sys.stderr)
             sys.exit(1)
         return response.json().get("text", "")
@@ -74,7 +77,10 @@ class OpenAIProvider:
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(f"Error: API request failed with status {response.status_code}", file=sys.stderr)
+            print(
+                f"Error: API request failed with status {response.status_code}",
+                file=sys.stderr,
+            )
             print(f"Response: {response.text}", file=sys.stderr)
             sys.exit(1)
         return response.json().get("text", "")
@@ -98,7 +104,10 @@ class GroqProvider:
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(f"Error: API request failed with status {response.status_code}", file=sys.stderr)
+            print(
+                f"Error: API request failed with status {response.status_code}",
+                file=sys.stderr,
+            )
             print(f"Response: {response.text}", file=sys.stderr)
             sys.exit(1)
         return response.json().get("text", "")
@@ -123,7 +132,10 @@ class DeepgramProvider:
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(f"Error: API request failed with status {response.status_code}", file=sys.stderr)
+            print(
+                f"Error: API request failed with status {response.status_code}",
+                file=sys.stderr,
+            )
             print(f"Response: {response.text}", file=sys.stderr)
             sys.exit(1)
         result = response.json()
@@ -136,6 +148,9 @@ def get_provider() -> Provider:
     load_dotenv(env_file)
 
     provider_name = os.environ.get("VOXPASTE_PROVIDER", "mistral").lower()
+
+    print(f"Using provider: {provider_name}")
+
     if provider_name not in PROVIDERS:
         print(f"Error: Unknown provider '{provider_name}'", file=sys.stderr)
         print(f"Available providers: {', '.join(PROVIDERS)}", file=sys.stderr)
@@ -158,7 +173,10 @@ def get_provider() -> Provider:
     api_key = os.environ.get(key_name)
     if not api_key:
         print(f"Error: {key_name} not set", file=sys.stderr)
-        print(f"Either set it in {env_file} or as an environment variable", file=sys.stderr)
+        print(
+            f"Either set it in {env_file} or as an environment variable",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     return provider_classes[provider_name](api_key)

@@ -87,12 +87,14 @@ pipx install git+https://github.com/felixbrock/voxpaste.git
 
 Voxpaste supports multiple speech-to-text providers. Set `VOXPASTE_PROVIDER` to choose one:
 
-| Provider | Value               | Model            | Notes                         |
-| -------- | ------------------- | ---------------- | ----------------------------- |
-| Mistral  | `mistral` (default) | Voxtral Mini     | Fast, good accuracy           |
-| OpenAI   | `openai`            | Whisper          | Most widely used              |
-| Groq     | `groq`              | Whisper Large v3 | Very fast, generous free tier |
-| Deepgram | `deepgram`          | Nova-2           | Real-time focused             |
+| Provider | Value               | Model            | Notes                                |
+| -------- | ------------------- | ---------------- | ------------------------------------ |
+| Mistral  | `mistral` (default) | Voxtral Mini     | **Best latency**, good accuracy      |
+| Groq     | `groq`              | Whisper Large v3 | **Best latency**, generous free tier |
+| OpenAI   | `openai`            | Whisper          | Most widely used, higher latency     |
+| Deepgram | `deepgram`          | Nova-2           | Real-time focused, higher latency    |
+
+**Recommended:** Use Mistral or Groq for the fastest transcription experience.
 
 ### Setting up your API key
 
