@@ -1,8 +1,10 @@
 [project]
-name = "instruction-transcriber"
+name = "voxpaste"
 version = "0.1.0"
-description = "Record audio and transcribe via Mistral Voxtral Mini API"
+description = "Record audio and transcribe via multiple STT providers (Mistral, OpenAI, Groq, Deepgram)"
 readme = "README.md"
+license = "MIT"
+authors = [{ name = "Felix Brockmeier" }]
 requires-python = ">=3.11"
 dependencies = [
     "sounddevice>=0.4.6",
@@ -13,4 +15,4 @@ dependencies = [
 ]
 
 [project.scripts]
-transcribe = "main:main"
+voxpaste = "main:main"

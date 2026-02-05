@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Record audio from microphone and transcribe using Mistral Voxtral Mini API."""
+"""Record audio from microphone and transcribe using various STT providers."""
 
 import io
 import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Protocol
 
 from dotenv import load_dotenv
 import httpx
@@ -16,31 +17,156 @@ from scipy.io import wavfile
 
 SAMPLE_RATE = 16000
 CHANNELS = 1
-MISTRAL_API_URL = "https://api.mistral.ai/v1/audio/transcriptions"
+
+CONFIG_DIR = Path.home() / ".config" / "voxpaste"
+CACHE_DIR = Path.home() / ".cache" / "voxpaste"
+
+PROVIDERS = ["mistral", "openai", "groq", "deepgram"]
 
 
-CONFIG_DIR = Path.home() / ".config" / "instruction-transcriber"
-CACHE_DIR = Path.home() / ".cache" / "instruction-transcriber"
+class Provider(Protocol):
+    """Protocol for STT providers."""
+
+    def transcribe(self, audio_bytes: bytes) -> str:
+        """Transcribe audio bytes to text."""
+        ...
 
 
-def get_api_key() -> str:
-    """Get Mistral API key from config file or environment."""
+class MistralProvider:
+    """Mistral Voxtral Mini provider."""
+
+    API_URL = "https://api.mistral.ai/v1/audio/transcriptions"
+    MODEL = "voxtral-mini-latest"
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+
+    def transcribe(self, audio_bytes: bytes) -> str:
+        response = httpx.post(
+            self.API_URL,
+            files={"file": ("recording.wav", audio_bytes, "audio/wav")},
+            data={"model": self.MODEL},
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            timeout=120.0,
+        )
+        if response.status_code != 200:
+            print(f"Error: API request failed with status {response.status_code}", file=sys.stderr)
+            print(f"Response: {response.text}", file=sys.stderr)
+            sys.exit(1)
+        return response.json().get("text", "")
+
+
+class OpenAIProvider:
+    """OpenAI Whisper provider."""
+
+    API_URL = "https://api.openai.com/v1/audio/transcriptions"
+    MODEL = "whisper-1"
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+
+    def transcribe(self, audio_bytes: bytes) -> str:
+        response = httpx.post(
+            self.API_URL,
+            files={"file": ("recording.wav", audio_bytes, "audio/wav")},
+            data={"model": self.MODEL},
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            timeout=120.0,
+        )
+        if response.status_code != 200:
+            print(f"Error: API request failed with status {response.status_code}", file=sys.stderr)
+            print(f"Response: {response.text}", file=sys.stderr)
+            sys.exit(1)
+        return response.json().get("text", "")
+
+
+class GroqProvider:
+    """Groq Whisper provider."""
+
+    API_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
+    MODEL = "whisper-large-v3"
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+
+    def transcribe(self, audio_bytes: bytes) -> str:
+        response = httpx.post(
+            self.API_URL,
+            files={"file": ("recording.wav", audio_bytes, "audio/wav")},
+            data={"model": self.MODEL},
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            timeout=120.0,
+        )
+        if response.status_code != 200:
+            print(f"Error: API request failed with status {response.status_code}", file=sys.stderr)
+            print(f"Response: {response.text}", file=sys.stderr)
+            sys.exit(1)
+        return response.json().get("text", "")
+
+
+class DeepgramProvider:
+    """Deepgram Nova-2 provider."""
+
+    API_URL = "https://api.deepgram.com/v1/listen?model=nova-2"
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+
+    def transcribe(self, audio_bytes: bytes) -> str:
+        response = httpx.post(
+            self.API_URL,
+            content=audio_bytes,
+            headers={
+                "Authorization": f"Token {self.api_key}",
+                "Content-Type": "audio/wav",
+            },
+            timeout=120.0,
+        )
+        if response.status_code != 200:
+            print(f"Error: API request failed with status {response.status_code}", file=sys.stderr)
+            print(f"Response: {response.text}", file=sys.stderr)
+            sys.exit(1)
+        result = response.json()
+        return result["results"]["channels"][0]["alternatives"][0]["transcript"]
+
+
+def get_provider() -> Provider:
+    """Get the configured STT provider."""
     env_file = CONFIG_DIR / ".env"
     load_dotenv(env_file)
-    api_key = os.environ.get("MISTRAL_API_KEY")
-    if not api_key:
-        print(f"Error: MISTRAL_API_KEY not set", file=sys.stderr)
-        print(
-            f"Either set it in {env_file} or as an environment variable",
-            file=sys.stderr,
-        )
+
+    provider_name = os.environ.get("VOXPASTE_PROVIDER", "mistral").lower()
+    if provider_name not in PROVIDERS:
+        print(f"Error: Unknown provider '{provider_name}'", file=sys.stderr)
+        print(f"Available providers: {', '.join(PROVIDERS)}", file=sys.stderr)
         sys.exit(1)
-    return api_key
+
+    api_key_map = {
+        "mistral": "MISTRAL_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "groq": "GROQ_API_KEY",
+        "deepgram": "DEEPGRAM_API_KEY",
+    }
+    provider_classes = {
+        "mistral": MistralProvider,
+        "openai": OpenAIProvider,
+        "groq": GroqProvider,
+        "deepgram": DeepgramProvider,
+    }
+
+    key_name = api_key_map[provider_name]
+    api_key = os.environ.get(key_name)
+    if not api_key:
+        print(f"Error: {key_name} not set", file=sys.stderr)
+        print(f"Either set it in {env_file} or as an environment variable", file=sys.stderr)
+        sys.exit(1)
+
+    return provider_classes[provider_name](api_key)
 
 
 def record_audio() -> np.ndarray:
-    """Record audio from microphone until Ctrl+C is pressed."""
-    print("Recording... Press Ctrl+C to stop.")
+    """Record audio from microphone until Enter is pressed."""
+    print("Recording... Press Enter to stop.")
 
     frames = []
 
@@ -55,13 +181,9 @@ def record_audio() -> np.ndarray:
         dtype=np.int16,
         callback=callback,
     ):
-        try:
-            while True:
-                sd.sleep(100)
-        except KeyboardInterrupt:
-            pass
+        input()
 
-    print("\nRecording stopped.")
+    print("Recording stopped.")
 
     if not frames:
         print("Error: No audio recorded", file=sys.stderr)
@@ -78,73 +200,44 @@ def audio_to_wav_bytes(audio_data: np.ndarray) -> bytes:
     return buffer.read()
 
 
-def transcribe_audio(audio_bytes: bytes, api_key: str) -> str:
-    """Send audio to Mistral API for transcription."""
-    print("Transcribing...")
-
-    files = {
-        "file": ("recording.wav", audio_bytes, "audio/wav"),
-    }
-    data = {
-        "model": "voxtral-mini-latest",
-    }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-    }
-
-    response = httpx.post(
-        MISTRAL_API_URL,
-        files=files,
-        data=data,
-        headers=headers,
-        timeout=120.0,
-    )
-
-    if response.status_code != 200:
-        print(
-            f"Error: API request failed with status {response.status_code}",
-            file=sys.stderr,
-        )
-        print(f"Response: {response.text}", file=sys.stderr)
-        sys.exit(1)
-
-    result = response.json()
-    return result.get("text", "")
-
-
 def copy_to_clipboard(text: str) -> None:
     """Copy text to system clipboard."""
-    try:
-        process = subprocess.Popen(
+    import platform
+
+    clipboard_commands = []
+    if platform.system() == "Darwin":
+        clipboard_commands = [["pbcopy"]]
+    else:
+        clipboard_commands = [
             ["xclip", "-selection", "clipboard"],
-            stdin=subprocess.PIPE,
-            start_new_session=True,
-        )
-        process.communicate(input=text.encode("utf-8"))
-        if process.returncode != 0:
-            raise subprocess.SubprocessError("xclip failed")
-    except FileNotFoundError:
+            ["xsel", "--clipboard", "--input"],
+        ]
+
+    for cmd in clipboard_commands:
         try:
             process = subprocess.Popen(
-                ["xsel", "--clipboard", "--input"],
+                cmd,
                 stdin=subprocess.PIPE,
                 start_new_session=True,
             )
             process.communicate(input=text.encode("utf-8"))
-            if process.returncode != 0:
-                raise subprocess.SubprocessError("xsel failed")
+            if process.returncode == 0:
+                print("Copied to clipboard!")
+                return
         except FileNotFoundError:
-            print(
-                "Warning: Could not copy to clipboard (install xclip or xsel)",
-                file=sys.stderr,
-            )
-            return
+            continue
 
-    print("Copied to clipboard!")
+    if platform.system() == "Darwin":
+        print("Warning: Could not copy to clipboard", file=sys.stderr)
+    else:
+        print(
+            "Warning: Could not copy to clipboard (install xclip or xsel)",
+            file=sys.stderr,
+        )
 
 
 def main():
-    api_key = get_api_key()
+    provider = get_provider()
 
     audio_data = record_audio()
 
@@ -153,7 +246,8 @@ def main():
 
     audio_bytes = audio_to_wav_bytes(audio_data)
 
-    transcription = transcribe_audio(audio_bytes, api_key)
+    print("Transcribing...")
+    transcription = provider.transcribe(audio_bytes)
 
     print(f"\nTranscription:\n{transcription}")
 
