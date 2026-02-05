@@ -12,7 +12,7 @@
 
 ---
 
-**Voxpaste** is a lightweight CLI tool that turns your voice into text and drops it straight into your clipboard—ready to paste into Claude, ChatGPT, Cursor, or any LLM-powered tool.
+**Voxpaste** is a lightweight CLI tool that turns your voice into text and drops it straight into your clipboard—ready to paste into any system that can handle textual noise and natural speech imperfections, like Claude, ChatGPT, Cursor, or other LLM-powered tools.
 
 Stop typing long prompts. Start speaking them.
 
