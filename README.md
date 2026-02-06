@@ -12,13 +12,13 @@
 
 ---
 
-**Voxpaste** is a lightweight CLI tool with **multi-provider support** that turns your voice into text and drops it straight into your clipboard. Choose from Mistral, OpenAI, Groq, or Deepgram—ready to paste into Claude, ChatGPT, Cursor, or any LLM-powered tool that can handle natural speech.
+**Voxpaste** is a lightweight CLI tool with **multi-provider support** that turns your voice into text and drops it straight into your clipboard. Choose from Mistral, OpenAI, Groq, Deepgram, or OpenRouter—ready to paste into Claude, ChatGPT, Cursor, or any LLM-powered tool that can handle natural speech.
 
 Stop typing long prompts. Start speaking them.
 
 ### Why Voxpaste?
 
-- **Multiple providers** — Choose from Mistral, OpenAI, Groq, or Deepgram—not locked into a single service
+- **Multiple providers** — Choose from Mistral, OpenAI, Groq, Deepgram, or OpenRouter—not locked into a single service
 - **Blazing fast** — Sub-second transcription latency with optimized providers
 - **Zero friction** — Record → transcribe → clipboard, all in one command
 - **Built for AI workflows** — Designed for developers who talk to LLMs all day. Bind it to a hotkey and invoke it from anywhere
@@ -33,6 +33,7 @@ Stop typing long prompts. Start speaking them.
   - [OpenAI](https://platform.openai.com/api-keys)
   - [Groq](https://console.groq.com/keys)
   - [Deepgram](https://console.deepgram.com/)
+  - [OpenRouter](https://openrouter.ai/keys)
 - System dependencies for audio recording and clipboard:
 
   **Linux:**
@@ -103,12 +104,13 @@ Note: Using `uv` or `pipx` is recommended for CLI tools as they create isolated 
 
 Voxpaste supports multiple speech-to-text providers. Set `VOXPASTE_PROVIDER` to choose one:
 
-| Provider | Value               | Default Model    | Notes                                |
-| -------- | ------------------- | ---------------- | ------------------------------------ |
-| Mistral  | `mistral` (default) | voxtral-mini-latest     | **Best latency**, good accuracy      |
-| Groq     | `groq`              | whisper-large-v3 | **Best latency**, generous free tier |
-| OpenAI   | `openai`            | whisper-1        | Most widely used, higher latency     |
-| Deepgram | `deepgram`          | nova-2           | Real-time focused, higher latency    |
+| Provider   | Value               | Default Model                    | Notes                                     |
+| ---------- | ------------------- | -------------------------------- | ----------------------------------------- |
+| Mistral    | `mistral` (default) | voxtral-mini-latest              | **Best latency**, good accuracy           |
+| Groq       | `groq`              | whisper-large-v3                 | **Best latency**, generous free tier      |
+| OpenAI     | `openai`            | whisper-1                        | Most widely used, higher latency          |
+| Deepgram   | `deepgram`          | nova-2                           | Real-time focused, higher latency         |
+| OpenRouter | `openrouter`        | mistralai/voxtral-small-24b-2507 | Access to multiple models via unified API |
 
 **Recommended:** Use Mistral or Groq for the fastest transcription experience.
 
@@ -116,12 +118,13 @@ Voxpaste supports multiple speech-to-text providers. Set `VOXPASTE_PROVIDER` to 
 
 You can customize which model to use for each provider by setting the corresponding environment variable:
 
-| Provider | Environment Variable | Default Value         | Other Options                           |
-| -------- | -------------------- | --------------------- | --------------------------------------- |
-| Mistral  | `MISTRAL_MODEL`      | `voxtral-mini-latest` | Check [Mistral docs](https://docs.mistral.ai/) for available models |
-| OpenAI   | `OPENAI_MODEL`       | `whisper-1`           | Currently only `whisper-1` is available |
-| Groq     | `GROQ_MODEL`         | `whisper-large-v3`    | `whisper-large-v3-turbo`, `distil-whisper-large-v3-en` |
-| Deepgram | `DEEPGRAM_MODEL`     | `nova-2`              | `nova`, `enhanced`, `base` - see [Deepgram docs](https://developers.deepgram.com/docs/model) |
+| Provider   | Environment Variable | Default Value                      | Other Options                                                                                                                            |
+| ---------- | -------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Mistral    | `MISTRAL_MODEL`      | `voxtral-mini-latest`              | Check [Mistral docs](https://docs.mistral.ai/) for available models                                                                      |
+| OpenAI     | `OPENAI_MODEL`       | `whisper-1`                        | Currently only `whisper-1` is available                                                                                                  |
+| Groq       | `GROQ_MODEL`         | `whisper-large-v3`                 | `whisper-large-v3-turbo`, `distil-whisper-large-v3-en`                                                                                   |
+| Deepgram   | `DEEPGRAM_MODEL`     | `nova-2`                           | `nova`, `enhanced`, `base` - see [Deepgram docs](https://developers.deepgram.com/docs/model)                                             |
+| OpenRouter | `OPENROUTER_MODEL`   | `mistralai/voxtral-small-24b-2507` | `google/gemini-2.5-flash`, `google/gemini-3-flash-preview` - see [audio models](https://openrouter.ai/models?supported_parameters=audio) |
 
 If not specified, the default model for each provider will be used.
 
@@ -152,6 +155,10 @@ Configuration is stored in `~/.config/voxpaste/.env`. See [`.env.example`](.env.
    # For Deepgram
    echo "VOXPASTE_PROVIDER=deepgram" > ~/.config/voxpaste/.env
    echo "DEEPGRAM_API_KEY=your-api-key-here" >> ~/.config/voxpaste/.env
+
+   # For OpenRouter
+   echo "VOXPASTE_PROVIDER=openrouter" > ~/.config/voxpaste/.env
+   echo "OPENROUTER_API_KEY=your-api-key-here" >> ~/.config/voxpaste/.env
    ```
 
    **Optional:** Customize the model for your chosen provider:
@@ -162,6 +169,9 @@ Configuration is stored in `~/.config/voxpaste/.env`. See [`.env.example`](.env.
 
    # Example: Use a different Deepgram model
    echo "DEEPGRAM_MODEL=nova" >> ~/.config/voxpaste/.env
+
+   # Example: Use a different OpenRouter model
+   echo "OPENROUTER_MODEL=google/gemini-2.5-flash" >> ~/.config/voxpaste/.env
    ```
 
 3. Secure the file:
@@ -224,4 +234,4 @@ Alternatively, tools like [Raycast](https://www.raycast.com/), [Alfred](https://
 
 - Verify the file exists: `cat ~/.config/voxpaste/.env`
 - Make sure there are no extra spaces around the `=` sign
-- Ensure you have the correct API key variable for your provider (`MISTRAL_API_KEY`, `OPENAI_API_KEY`, `GROQ_API_KEY`, or `DEEPGRAM_API_KEY`)
+- Ensure you have the correct API key variable for your provider (`MISTRAL_API_KEY`, `OPENAI_API_KEY`, `GROQ_API_KEY`, `DEEPGRAM_API_KEY`, or `OPENROUTER_API_KEY`)

@@ -21,7 +21,7 @@ CHANNELS = 1
 CONFIG_DIR = Path.home() / ".config" / "voxpaste"
 CACHE_DIR = Path.home() / ".cache" / "voxpaste"
 
-PROVIDERS = ["mistral", "openai", "groq", "deepgram"]
+PROVIDERS = ["mistral", "openai", "groq", "deepgram", "openrouter"]
 
 
 class Provider(Protocol):
@@ -148,6 +148,66 @@ class DeepgramProvider:
         return result["results"]["channels"][0]["alternatives"][0]["transcript"]
 
 
+class OpenRouterProvider:
+    """OpenRouter provider using chat completions API with audio support."""
+
+    API_URL = "https://openrouter.ai/api/v1/chat/completions"
+    DEFAULT_MODEL = "mistralai/voxtral-small-24b-2507"
+
+    def __init__(self, api_key: str, model: str | None = None):
+        self.api_key = api_key
+        self.model = model or self.DEFAULT_MODEL
+
+    def transcribe(self, audio_bytes: bytes) -> str:
+        import base64
+
+        # Encode audio to base64
+        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+
+        # Prepare chat completion request with audio
+        payload = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Please transcribe this audio file. Only output the transcription text, nothing else."
+                        },
+                        {
+                            "type": "input_audio",
+                            "input_audio": {
+                                "data": audio_base64,
+                                "format": "wav"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+
+        response = httpx.post(
+            self.API_URL,
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            },
+            timeout=120.0,
+        )
+        if response.status_code != 200:
+            print(
+                f"Error: API request failed with status {response.status_code}",
+                file=sys.stderr,
+            )
+            print(f"Response: {response.text}", file=sys.stderr)
+            sys.exit(1)
+
+        result = response.json()
+        return result.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+
 def get_provider() -> Provider:
     """Get the configured STT provider."""
     env_file = CONFIG_DIR / ".env"
@@ -167,18 +227,21 @@ def get_provider() -> Provider:
         "openai": "OPENAI_API_KEY",
         "groq": "GROQ_API_KEY",
         "deepgram": "DEEPGRAM_API_KEY",
+        "openrouter": "OPENROUTER_API_KEY",
     }
     model_env_map = {
         "mistral": "MISTRAL_MODEL",
         "openai": "OPENAI_MODEL",
         "groq": "GROQ_MODEL",
         "deepgram": "DEEPGRAM_MODEL",
+        "openrouter": "OPENROUTER_MODEL",
     }
     provider_classes = {
         "mistral": MistralProvider,
         "openai": OpenAIProvider,
         "groq": GroqProvider,
         "deepgram": DeepgramProvider,
+        "openrouter": OpenRouterProvider,
     }
 
     key_name = api_key_map[provider_name]
