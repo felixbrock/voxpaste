@@ -12,16 +12,31 @@
 
 ---
 
-**Voxpaste** is a lightweight CLI tool with **multi-provider support** that turns your voice into text and drops it straight into your clipboard. Choose from Mistral, OpenAI, Groq, Deepgram, or OpenRouter—ready to paste into Claude, ChatGPT, Cursor, or any LLM-powered tool that can handle natural speech.
+**Voxpaste** is a lightweight CLI tool with **multi-provider support** that turns your voice into text and drops it straight into your clipboard. Choose from Mistral, OpenAI, Groq, Deepgram, or OpenRouter.
 
-Stop typing long prompts. Start speaking them.
+Stop typing. Start speaking.
+
+### Two Modes for Different Workflows
+
+**Raw Mode (default)** — One-to-one transcription with the absolute lowest latency. Perfect for pasting into LLMs like Claude, ChatGPT, or Cursor that can handle natural speech patterns. No processing overhead, just pure speed.
+
+```bash
+voxpaste
+```
+
+**Clean Mode (`--clean`)** — AI-powered cleanup that removes filler words, repetitions, and noise. Still extremely low latency with only marginally higher cost (two API calls instead of one). Ideal for drafting emails, documentation, or any context where you need polished text ready to use without LLM assistance.
+
+```bash
+voxpaste --clean
+```
 
 ### Why Voxpaste?
 
+- **Two modes, two workflows** — Raw for LLMs, clean for everything else
 - **Multiple providers** — Choose from Mistral, OpenAI, Groq, Deepgram, or OpenRouter—not locked into a single service
 - **Blazing fast** — Sub-second transcription latency with optimized providers
 - **Zero friction** — Record → transcribe → clipboard, all in one command
-- **Built for AI workflows** — Designed for developers who talk to LLMs all day. Bind it to a hotkey and invoke it from anywhere
+- **Built for AI workflows** — Designed for developers who talk to AI all day. Bind it to a hotkey and invoke it from anywhere
 - **Privacy-conscious** — Your audio goes directly to your chosen provider, no middlemen
 
 ## Prerequisites

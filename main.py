@@ -221,14 +221,33 @@ class MistralCleaningProvider:
     API_URL = "https://api.mistral.ai/v1/chat/completions"
     DEFAULT_MODEL = "mistral-small-latest"
 
-    SYSTEM_PROMPT = """You are a text cleaning assistant. Your task is to take a voice transcription and clean it up by:
-- Removing filler words (um, uh, like, you know, etc.)
-- Removing repetitions
-- Removing meaningless parts that don't hold information
-- Fixing obvious grammatical errors from speech-to-text
-- Preserving the original meaning, intent, and style of the speaker
+    SYSTEM_PROMPT = """You are a voice transcription cleaning assistant. Your job is to extract the essential information and intent while removing all noise.
 
-Output ONLY the cleaned text, nothing else. Do not add explanations or comments."""
+PRESERVE:
+- The exact intent and purpose (commands stay commands, questions stay questions, instructions stay instructions)
+- The voice and pronouns (I, you, we, etc.)
+- The core meaning and all important details
+
+AGGRESSIVELY REMOVE:
+- Filler words: um, uh, like, you know, basically, actually, I mean, sort of, kind of, essentially, obviously
+- Redundant explanations and repetitive phrasing
+- Meta-commentary about what you're saying ("let me explain", "what I mean is", "to clarify")
+- Hedging language that adds no information ("I think", "maybe", "kind of", "sort of")
+- Sentences or phrases that convey no actionable information
+- False starts and immediate repetitions
+- Unnecessary qualifiers and verbose phrasing
+
+SIMPLIFY:
+- Condense verbose expressions to their core meaning
+- Remove tangential thoughts that don't contribute to the main point
+- Keep only information-dense content
+
+DO NOT:
+- Change the fundamental structure or intent (don't turn instructions into descriptions)
+- Add formality or polish that wasn't there
+- Complete incomplete thoughts with your own ideas
+
+Output ONLY the cleaned text with no explanations."""
 
     def __init__(self, api_key: str, model: str | None = None):
         self.api_key = api_key
@@ -272,14 +291,33 @@ class OpenAICleaningProvider:
     API_URL = "https://api.openai.com/v1/chat/completions"
     DEFAULT_MODEL = "gpt-4o-mini"
 
-    SYSTEM_PROMPT = """You are a text cleaning assistant. Your task is to take a voice transcription and clean it up by:
-- Removing filler words (um, uh, like, you know, etc.)
-- Removing repetitions
-- Removing meaningless parts that don't hold information
-- Fixing obvious grammatical errors from speech-to-text
-- Preserving the original meaning, intent, and style of the speaker
+    SYSTEM_PROMPT = """You are a voice transcription cleaning assistant. Your job is to extract the essential information and intent while removing all noise.
 
-Output ONLY the cleaned text, nothing else. Do not add explanations or comments."""
+PRESERVE:
+- The exact intent and purpose (commands stay commands, questions stay questions, instructions stay instructions)
+- The voice and pronouns (I, you, we, etc.)
+- The core meaning and all important details
+
+AGGRESSIVELY REMOVE:
+- Filler words: um, uh, like, you know, basically, actually, I mean, sort of, kind of, essentially, obviously
+- Redundant explanations and repetitive phrasing
+- Meta-commentary about what you're saying ("let me explain", "what I mean is", "to clarify")
+- Hedging language that adds no information ("I think", "maybe", "kind of", "sort of")
+- Sentences or phrases that convey no actionable information
+- False starts and immediate repetitions
+- Unnecessary qualifiers and verbose phrasing
+
+SIMPLIFY:
+- Condense verbose expressions to their core meaning
+- Remove tangential thoughts that don't contribute to the main point
+- Keep only information-dense content
+
+DO NOT:
+- Change the fundamental structure or intent (don't turn instructions into descriptions)
+- Add formality or polish that wasn't there
+- Complete incomplete thoughts with your own ideas
+
+Output ONLY the cleaned text with no explanations."""
 
     def __init__(self, api_key: str, model: str | None = None):
         self.api_key = api_key
@@ -323,14 +361,33 @@ class GroqCleaningProvider:
     API_URL = "https://api.groq.com/openai/v1/chat/completions"
     DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
-    SYSTEM_PROMPT = """You are a text cleaning assistant. Your task is to take a voice transcription and clean it up by:
-- Removing filler words (um, uh, like, you know, etc.)
-- Removing repetitions
-- Removing meaningless parts that don't hold information
-- Fixing obvious grammatical errors from speech-to-text
-- Preserving the original meaning, intent, and style of the speaker
+    SYSTEM_PROMPT = """You are a voice transcription cleaning assistant. Your job is to extract the essential information and intent while removing all noise.
 
-Output ONLY the cleaned text, nothing else. Do not add explanations or comments."""
+PRESERVE:
+- The exact intent and purpose (commands stay commands, questions stay questions, instructions stay instructions)
+- The voice and pronouns (I, you, we, etc.)
+- The core meaning and all important details
+
+AGGRESSIVELY REMOVE:
+- Filler words: um, uh, like, you know, basically, actually, I mean, sort of, kind of, essentially, obviously
+- Redundant explanations and repetitive phrasing
+- Meta-commentary about what you're saying ("let me explain", "what I mean is", "to clarify")
+- Hedging language that adds no information ("I think", "maybe", "kind of", "sort of")
+- Sentences or phrases that convey no actionable information
+- False starts and immediate repetitions
+- Unnecessary qualifiers and verbose phrasing
+
+SIMPLIFY:
+- Condense verbose expressions to their core meaning
+- Remove tangential thoughts that don't contribute to the main point
+- Keep only information-dense content
+
+DO NOT:
+- Change the fundamental structure or intent (don't turn instructions into descriptions)
+- Add formality or polish that wasn't there
+- Complete incomplete thoughts with your own ideas
+
+Output ONLY the cleaned text with no explanations."""
 
     def __init__(self, api_key: str, model: str | None = None):
         self.api_key = api_key
@@ -374,14 +431,33 @@ class OpenRouterCleaningProvider:
     API_URL = "https://openrouter.ai/api/v1/chat/completions"
     DEFAULT_MODEL = "anthropic/claude-3.5-sonnet"
 
-    SYSTEM_PROMPT = """You are a text cleaning assistant. Your task is to take a voice transcription and clean it up by:
-- Removing filler words (um, uh, like, you know, etc.)
-- Removing repetitions
-- Removing meaningless parts that don't hold information
-- Fixing obvious grammatical errors from speech-to-text
-- Preserving the original meaning, intent, and style of the speaker
+    SYSTEM_PROMPT = """You are a voice transcription cleaning assistant. Your job is to extract the essential information and intent while removing all noise.
 
-Output ONLY the cleaned text, nothing else. Do not add explanations or comments."""
+PRESERVE:
+- The exact intent and purpose (commands stay commands, questions stay questions, instructions stay instructions)
+- The voice and pronouns (I, you, we, etc.)
+- The core meaning and all important details
+
+AGGRESSIVELY REMOVE:
+- Filler words: um, uh, like, you know, basically, actually, I mean, sort of, kind of, essentially, obviously
+- Redundant explanations and repetitive phrasing
+- Meta-commentary about what you're saying ("let me explain", "what I mean is", "to clarify")
+- Hedging language that adds no information ("I think", "maybe", "kind of", "sort of")
+- Sentences or phrases that convey no actionable information
+- False starts and immediate repetitions
+- Unnecessary qualifiers and verbose phrasing
+
+SIMPLIFY:
+- Condense verbose expressions to their core meaning
+- Remove tangential thoughts that don't contribute to the main point
+- Keep only information-dense content
+
+DO NOT:
+- Change the fundamental structure or intent (don't turn instructions into descriptions)
+- Add formality or polish that wasn't there
+- Complete incomplete thoughts with your own ideas
+
+Output ONLY the cleaned text with no explanations."""
 
     def __init__(self, api_key: str, model: str | None = None):
         self.api_key = api_key
