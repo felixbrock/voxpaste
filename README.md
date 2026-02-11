@@ -181,6 +181,8 @@ Configuration is stored in `~/.config/voxpaste/.env`. See [`.env.example`](.env.
 
 ## Usage
 
+### Basic Usage
+
 Simply run:
 
 ```bash
@@ -194,6 +196,34 @@ voxpaste
 5. The transcription is printed and copied to your clipboard
 
 The last transcription is also saved to `~/.cache/voxpaste/last_transcription.txt`.
+
+### Cleaning Transcriptions
+
+Use the `--clean` flag to automatically clean up your transcriptions using an LLM. This removes filler words (um, uh, like), repetitions, and noise while preserving the original meaning:
+
+```bash
+voxpaste --clean
+```
+
+By default, cleaning uses the same provider as your STT transcription. To customize the cleaning provider and model, configure them in `~/.config/voxpaste/.env`:
+
+```bash
+# Use Groq for fast, cost-effective cleaning
+VOXPASTE_CLEANING_PROVIDER=groq
+GROQ_CLEANING_MODEL=llama-3.3-70b-versatile
+
+# Or use OpenRouter with Claude for high-quality cleaning
+VOXPASTE_CLEANING_PROVIDER=openrouter
+OPENROUTER_CLEANING_MODEL=anthropic/claude-3.5-sonnet
+
+# Or use OpenAI
+VOXPASTE_CLEANING_PROVIDER=openai
+OPENAI_CLEANING_MODEL=gpt-4o-mini
+```
+
+Available cleaning providers: `mistral`, `openai`, `groq`, `openrouter`
+
+See [`.env.example`](.env.example) for all cleaning configuration options and default models.
 
 ### Pro tip: Bind to a global hotkey
 
