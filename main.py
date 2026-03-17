@@ -26,6 +26,10 @@ PROVIDERS = ["mistral", "openai", "groq", "deepgram", "openrouter"]
 CLEANING_PROVIDERS = ["mistral", "openai", "groq", "openrouter"]
 
 
+class VoxPasteError(Exception):
+    """Raised when VoxPaste encounters a user-facing error."""
+
+
 class Provider(Protocol):
     """Protocol for STT providers."""
 
@@ -53,12 +57,10 @@ class MistralProvider:
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(
-                f"Error: API request failed with status {response.status_code}",
-                file=sys.stderr,
+            raise VoxPasteError(
+                f"API request failed with status {response.status_code}\n"
+                f"Response: {response.text}"
             )
-            print(f"Response: {response.text}", file=sys.stderr)
-            sys.exit(1)
         return response.json().get("text", "")
 
 
@@ -81,12 +83,10 @@ class OpenAIProvider:
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(
-                f"Error: API request failed with status {response.status_code}",
-                file=sys.stderr,
+            raise VoxPasteError(
+                f"API request failed with status {response.status_code}\n"
+                f"Response: {response.text}"
             )
-            print(f"Response: {response.text}", file=sys.stderr)
-            sys.exit(1)
         return response.json().get("text", "")
 
 
@@ -109,12 +109,10 @@ class GroqProvider:
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(
-                f"Error: API request failed with status {response.status_code}",
-                file=sys.stderr,
+            raise VoxPasteError(
+                f"API request failed with status {response.status_code}\n"
+                f"Response: {response.text}"
             )
-            print(f"Response: {response.text}", file=sys.stderr)
-            sys.exit(1)
         return response.json().get("text", "")
 
 
@@ -140,12 +138,10 @@ class DeepgramProvider:
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(
-                f"Error: API request failed with status {response.status_code}",
-                file=sys.stderr,
+            raise VoxPasteError(
+                f"API request failed with status {response.status_code}\n"
+                f"Response: {response.text}"
             )
-            print(f"Response: {response.text}", file=sys.stderr)
-            sys.exit(1)
         result = response.json()
         return result["results"]["channels"][0]["alternatives"][0]["transcript"]
 
@@ -196,12 +192,10 @@ class OpenRouterProvider:
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(
-                f"Error: API request failed with status {response.status_code}",
-                file=sys.stderr,
+            raise VoxPasteError(
+                f"API request failed with status {response.status_code}\n"
+                f"Response: {response.text}"
             )
-            print(f"Response: {response.text}", file=sys.stderr)
-            sys.exit(1)
 
         result = response.json()
         return result.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -272,12 +266,10 @@ Output ONLY the cleaned text with no explanations."""
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(
-                f"Error: Cleaning API request failed with status {response.status_code}",
-                file=sys.stderr,
+            raise VoxPasteError(
+                f"Cleaning API request failed with status {response.status_code}\n"
+                f"Response: {response.text}"
             )
-            print(f"Response: {response.text}", file=sys.stderr)
-            sys.exit(1)
 
         result = response.json()
         return (
@@ -342,12 +334,10 @@ Output ONLY the cleaned text with no explanations."""
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(
-                f"Error: Cleaning API request failed with status {response.status_code}",
-                file=sys.stderr,
+            raise VoxPasteError(
+                f"Cleaning API request failed with status {response.status_code}\n"
+                f"Response: {response.text}"
             )
-            print(f"Response: {response.text}", file=sys.stderr)
-            sys.exit(1)
 
         result = response.json()
         return (
@@ -412,12 +402,10 @@ Output ONLY the cleaned text with no explanations."""
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(
-                f"Error: Cleaning API request failed with status {response.status_code}",
-                file=sys.stderr,
+            raise VoxPasteError(
+                f"Cleaning API request failed with status {response.status_code}\n"
+                f"Response: {response.text}"
             )
-            print(f"Response: {response.text}", file=sys.stderr)
-            sys.exit(1)
 
         result = response.json()
         return (
@@ -482,12 +470,10 @@ Output ONLY the cleaned text with no explanations."""
             timeout=120.0,
         )
         if response.status_code != 200:
-            print(
-                f"Error: Cleaning API request failed with status {response.status_code}",
-                file=sys.stderr,
+            raise VoxPasteError(
+                f"Cleaning API request failed with status {response.status_code}\n"
+                f"Response: {response.text}"
             )
-            print(f"Response: {response.text}", file=sys.stderr)
-            sys.exit(1)
 
         result = response.json()
         return (
@@ -505,9 +491,10 @@ def get_provider() -> Provider:
     print(f"Using provider: {provider_name}")
 
     if provider_name not in PROVIDERS:
-        print(f"Error: Unknown provider '{provider_name}'", file=sys.stderr)
-        print(f"Available providers: {', '.join(PROVIDERS)}", file=sys.stderr)
-        sys.exit(1)
+        raise VoxPasteError(
+            f"Unknown provider '{provider_name}'\n"
+            f"Available providers: {', '.join(PROVIDERS)}"
+        )
 
     api_key_map = {
         "mistral": "MISTRAL_API_KEY",
@@ -534,12 +521,10 @@ def get_provider() -> Provider:
     key_name = api_key_map[provider_name]
     api_key = os.environ.get(key_name)
     if not api_key:
-        print(f"Error: {key_name} not set", file=sys.stderr)
-        print(
-            f"Either set it in {env_file} or as an environment variable",
-            file=sys.stderr,
+        raise VoxPasteError(
+            f"{key_name} not set\n"
+            f"Either set it in {env_file} or as an environment variable"
         )
-        sys.exit(1)
 
     # Get custom model if specified
     model_env_name = model_env_map[provider_name]
@@ -569,12 +554,10 @@ def get_cleaning_provider() -> CleaningProvider:
     print(f"Using cleaning provider: {provider_name}")
 
     if provider_name not in CLEANING_PROVIDERS:
-        print(f"Error: Unknown cleaning provider '{provider_name}'", file=sys.stderr)
-        print(
-            f"Available cleaning providers: {', '.join(CLEANING_PROVIDERS)}",
-            file=sys.stderr,
+        raise VoxPasteError(
+            f"Unknown cleaning provider '{provider_name}'\n"
+            f"Available cleaning providers: {', '.join(CLEANING_PROVIDERS)}"
         )
-        sys.exit(1)
 
     api_key_map = {
         "mistral": "MISTRAL_API_KEY",
@@ -598,12 +581,10 @@ def get_cleaning_provider() -> CleaningProvider:
     key_name = api_key_map[provider_name]
     api_key = os.environ.get(key_name)
     if not api_key:
-        print(f"Error: {key_name} not set", file=sys.stderr)
-        print(
-            f"Either set it in {env_file} or as an environment variable",
-            file=sys.stderr,
+        raise VoxPasteError(
+            f"{key_name} not set\n"
+            f"Either set it in {env_file} or as an environment variable"
         )
-        sys.exit(1)
 
     # Get custom model if specified
     model_env_name = model_env_map[provider_name]
@@ -640,8 +621,7 @@ def record_audio() -> np.ndarray:
     print("Recording stopped.")
 
     if not frames:
-        print("Error: No audio recorded", file=sys.stderr)
-        sys.exit(1)
+        raise VoxPasteError("No audio recorded")
 
     return np.concatenate(frames, axis=0)
 
@@ -690,6 +670,17 @@ def copy_to_clipboard(text: str) -> None:
         )
 
 
+def maybe_wait_before_exit() -> None:
+    """Keep the terminal open after an error when running interactively."""
+    if not sys.stdin.isatty() or not sys.stderr.isatty():
+        return
+
+    try:
+        input("\nPress Enter to close VoxPaste...")
+    except EOFError:
+        pass
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Record audio and transcribe using various STT providers"
@@ -702,35 +693,44 @@ def main():
 
     args = parser.parse_args()
 
-    provider = get_provider()
+    try:
+        provider = get_provider()
 
-    audio_data = record_audio()
+        audio_data = record_audio()
 
-    duration = len(audio_data) / SAMPLE_RATE
-    print(f"Recorded {duration:.1f} seconds of audio")
+        duration = len(audio_data) / SAMPLE_RATE
+        print(f"Recorded {duration:.1f} seconds of audio")
 
-    audio_bytes = audio_to_wav_bytes(audio_data)
+        audio_bytes = audio_to_wav_bytes(audio_data)
 
-    print("Transcribing...")
-    transcription = provider.transcribe(audio_bytes)
+        print("Transcribing...")
+        transcription = provider.transcribe(audio_bytes)
 
-    print(f"\nTranscription:\n{transcription}")
+        print(f"\nTranscription:\n{transcription}")
 
-    # Clean the transcription if requested
-    if args.clean:
-        print("\nCleaning transcription...")
-        cleaning_provider = get_cleaning_provider()
-        cleaned_text = cleaning_provider.clean(transcription)
-        print(f"\nCleaned transcription:\n{cleaned_text}")
-        final_text = cleaned_text
-    else:
-        final_text = transcription
+        # Clean the transcription if requested
+        if args.clean:
+            print("\nCleaning transcription...")
+            cleaning_provider = get_cleaning_provider()
+            cleaned_text = cleaning_provider.clean(transcription)
+            print(f"\nCleaned transcription:\n{cleaned_text}")
+            final_text = cleaned_text
+        else:
+            final_text = transcription
 
-    # Write to cache file for external clipboard access
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    (CACHE_DIR / "last_transcription.txt").write_text(final_text)
+        # Write to cache file for external clipboard access
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        (CACHE_DIR / "last_transcription.txt").write_text(final_text)
 
-    copy_to_clipboard(final_text)
+        copy_to_clipboard(final_text)
+    except VoxPasteError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        maybe_wait_before_exit()
+        sys.exit(1)
+    except Exception as exc:
+        print(f"Unexpected error: {exc}", file=sys.stderr)
+        maybe_wait_before_exit()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
