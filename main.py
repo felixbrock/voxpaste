@@ -6,6 +6,7 @@ import io
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Protocol
 
@@ -24,10 +25,76 @@ CACHE_DIR = Path.home() / ".cache" / "voxpaste"
 
 PROVIDERS = ["mistral", "openai", "groq", "deepgram", "openrouter"]
 CLEANING_PROVIDERS = ["mistral", "openai", "groq", "openrouter"]
+RETRYABLE_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
+MAX_API_ATTEMPTS = 3
 
 
 class VoxPasteError(Exception):
     """Raised when VoxPaste encounters a user-facing error."""
+
+
+def request_with_retries(
+    operation_name: str,
+    request_fn,
+    *,
+    max_attempts: int = MAX_API_ATTEMPTS,
+):
+    """Execute an API request with bounded retries for transient failures."""
+    last_response = None
+    last_exception = None
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = request_fn()
+        except httpx.RequestError as exc:
+            last_exception = exc
+            if attempt == max_attempts:
+                break
+
+            delay = min(2 ** (attempt - 1), 8)
+            print(
+                f"{operation_name} failed due to a network error "
+                f"({exc.__class__.__name__}: {exc}). Retrying in {delay}s..."
+            )
+            time.sleep(delay)
+            continue
+
+        if response.status_code == 200:
+            return response
+
+        last_response = response
+        if response.status_code not in RETRYABLE_STATUS_CODES or attempt == max_attempts:
+            break
+
+        retry_after = response.headers.get("retry-after")
+        delay = int(retry_after) if retry_after and retry_after.isdigit() else min(
+            2 ** (attempt - 1), 8
+        )
+        print(
+            f"{operation_name} failed with status {response.status_code}. "
+            f"Retrying in {delay}s..."
+        )
+        time.sleep(delay)
+
+    if last_response is not None:
+        if last_response.status_code in RETRYABLE_STATUS_CODES:
+            raise VoxPasteError(
+                f"{operation_name} failed after {max_attempts} attempts "
+                f"(last status: {last_response.status_code})\n"
+                f"Response: {last_response.text}"
+            )
+        raise VoxPasteError(
+            f"{operation_name} failed with status {last_response.status_code}\n"
+            f"Response: {last_response.text}"
+        )
+
+    if last_exception is not None:
+        raise VoxPasteError(
+            f"{operation_name} failed after {max_attempts} attempts\n"
+            f"Network error: {last_exception}"
+        )
+
+    raise VoxPasteError(f"{operation_name} failed before receiving a response")
 
 
 class Provider(Protocol):
@@ -49,18 +116,16 @@ class MistralProvider:
         self.model = model or self.DEFAULT_MODEL
 
     def transcribe(self, audio_bytes: bytes) -> str:
-        response = httpx.post(
-            self.API_URL,
-            files={"file": ("recording.wav", audio_bytes, "audio/wav")},
-            data={"model": self.model},
-            headers={"Authorization": f"Bearer {self.api_key}"},
-            timeout=120.0,
+        response = request_with_retries(
+            "Transcription request",
+            lambda: httpx.post(
+                self.API_URL,
+                files={"file": ("recording.wav", audio_bytes, "audio/wav")},
+                data={"model": self.model},
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                timeout=120.0,
+            ),
         )
-        if response.status_code != 200:
-            raise VoxPasteError(
-                f"API request failed with status {response.status_code}\n"
-                f"Response: {response.text}"
-            )
         return response.json().get("text", "")
 
 
@@ -75,18 +140,16 @@ class OpenAIProvider:
         self.model = model or self.DEFAULT_MODEL
 
     def transcribe(self, audio_bytes: bytes) -> str:
-        response = httpx.post(
-            self.API_URL,
-            files={"file": ("recording.wav", audio_bytes, "audio/wav")},
-            data={"model": self.model},
-            headers={"Authorization": f"Bearer {self.api_key}"},
-            timeout=120.0,
+        response = request_with_retries(
+            "Transcription request",
+            lambda: httpx.post(
+                self.API_URL,
+                files={"file": ("recording.wav", audio_bytes, "audio/wav")},
+                data={"model": self.model},
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                timeout=120.0,
+            ),
         )
-        if response.status_code != 200:
-            raise VoxPasteError(
-                f"API request failed with status {response.status_code}\n"
-                f"Response: {response.text}"
-            )
         return response.json().get("text", "")
 
 
@@ -101,18 +164,16 @@ class GroqProvider:
         self.model = model or self.DEFAULT_MODEL
 
     def transcribe(self, audio_bytes: bytes) -> str:
-        response = httpx.post(
-            self.API_URL,
-            files={"file": ("recording.wav", audio_bytes, "audio/wav")},
-            data={"model": self.model},
-            headers={"Authorization": f"Bearer {self.api_key}"},
-            timeout=120.0,
+        response = request_with_retries(
+            "Transcription request",
+            lambda: httpx.post(
+                self.API_URL,
+                files={"file": ("recording.wav", audio_bytes, "audio/wav")},
+                data={"model": self.model},
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                timeout=120.0,
+            ),
         )
-        if response.status_code != 200:
-            raise VoxPasteError(
-                f"API request failed with status {response.status_code}\n"
-                f"Response: {response.text}"
-            )
         return response.json().get("text", "")
 
 
@@ -128,20 +189,18 @@ class DeepgramProvider:
 
     def transcribe(self, audio_bytes: bytes) -> str:
         url = f"{self.API_BASE_URL}?model={self.model}"
-        response = httpx.post(
-            url,
-            content=audio_bytes,
-            headers={
-                "Authorization": f"Token {self.api_key}",
-                "Content-Type": "audio/wav",
-            },
-            timeout=120.0,
+        response = request_with_retries(
+            "Transcription request",
+            lambda: httpx.post(
+                url,
+                content=audio_bytes,
+                headers={
+                    "Authorization": f"Token {self.api_key}",
+                    "Content-Type": "audio/wav",
+                },
+                timeout=120.0,
+            ),
         )
-        if response.status_code != 200:
-            raise VoxPasteError(
-                f"API request failed with status {response.status_code}\n"
-                f"Response: {response.text}"
-            )
         result = response.json()
         return result["results"]["channels"][0]["alternatives"][0]["transcript"]
 
@@ -182,20 +241,18 @@ class OpenRouterProvider:
             ],
         }
 
-        response = httpx.post(
-            self.API_URL,
-            json=payload,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            timeout=120.0,
+        response = request_with_retries(
+            "Transcription request",
+            lambda: httpx.post(
+                self.API_URL,
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=120.0,
+            ),
         )
-        if response.status_code != 200:
-            raise VoxPasteError(
-                f"API request failed with status {response.status_code}\n"
-                f"Response: {response.text}"
-            )
 
         result = response.json()
         return result.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -256,20 +313,18 @@ Output ONLY the cleaned text with no explanations."""
             ],
         }
 
-        response = httpx.post(
-            self.API_URL,
-            json=payload,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            timeout=120.0,
+        response = request_with_retries(
+            "Cleaning request",
+            lambda: httpx.post(
+                self.API_URL,
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=120.0,
+            ),
         )
-        if response.status_code != 200:
-            raise VoxPasteError(
-                f"Cleaning API request failed with status {response.status_code}\n"
-                f"Response: {response.text}"
-            )
 
         result = response.json()
         return (
@@ -324,20 +379,18 @@ Output ONLY the cleaned text with no explanations."""
             ],
         }
 
-        response = httpx.post(
-            self.API_URL,
-            json=payload,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            timeout=120.0,
+        response = request_with_retries(
+            "Cleaning request",
+            lambda: httpx.post(
+                self.API_URL,
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=120.0,
+            ),
         )
-        if response.status_code != 200:
-            raise VoxPasteError(
-                f"Cleaning API request failed with status {response.status_code}\n"
-                f"Response: {response.text}"
-            )
 
         result = response.json()
         return (
@@ -392,20 +445,18 @@ Output ONLY the cleaned text with no explanations."""
             ],
         }
 
-        response = httpx.post(
-            self.API_URL,
-            json=payload,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            timeout=120.0,
+        response = request_with_retries(
+            "Cleaning request",
+            lambda: httpx.post(
+                self.API_URL,
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=120.0,
+            ),
         )
-        if response.status_code != 200:
-            raise VoxPasteError(
-                f"Cleaning API request failed with status {response.status_code}\n"
-                f"Response: {response.text}"
-            )
 
         result = response.json()
         return (
@@ -460,20 +511,18 @@ Output ONLY the cleaned text with no explanations."""
             ],
         }
 
-        response = httpx.post(
-            self.API_URL,
-            json=payload,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            timeout=120.0,
+        response = request_with_retries(
+            "Cleaning request",
+            lambda: httpx.post(
+                self.API_URL,
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=120.0,
+            ),
         )
-        if response.status_code != 200:
-            raise VoxPasteError(
-                f"Cleaning API request failed with status {response.status_code}\n"
-                f"Response: {response.text}"
-            )
 
         result = response.json()
         return (
