@@ -37,10 +37,17 @@ class VoxPasteError(Exception):
 class TranscriptionResult:
     """Structured result for a completed transcription."""
 
-    def __init__(self, text: str, provider_name: str, used_fallback: bool = False):
+    def __init__(
+        self,
+        text: str,
+        provider_name: str,
+        used_fallback: bool = False,
+        primary_error: str | None = None,
+    ):
         self.text = text
         self.provider_name = provider_name
         self.used_fallback = used_fallback
+        self.primary_error = primary_error
 
 
 def request_with_retries(
@@ -670,12 +677,16 @@ def get_cleaning_provider() -> CleaningProvider:
     return cleaning_provider
 
 
-def notify_fallback_usage(primary_provider: str, fallback_provider: str) -> None:
+def notify_fallback_usage(
+    primary_provider: str, fallback_provider: str, primary_error: str
+) -> None:
     """Best-effort system notification when fallback transcription succeeds."""
     title = "VoxPaste used fallback transcription"
+    error_summary = " ".join(primary_error.splitlines()).strip()
     message = (
         f"Primary provider '{primary_provider}' failed. "
-        f"Transcribed with fallback provider '{fallback_provider}'."
+        f"Transcribed with fallback provider '{fallback_provider}'. "
+        f"Error: {error_summary}"
     )
 
     commands: list[list[str]] = []
@@ -746,7 +757,12 @@ def transcribe_with_fallback(audio_bytes: bytes) -> TranscriptionResult:
                 f"Fallback error: {fallback_error}"
             ) from fallback_error
 
-        return TranscriptionResult(text, fallback_name, used_fallback=True)
+        return TranscriptionResult(
+            text,
+            fallback_name,
+            used_fallback=True,
+            primary_error=str(primary_error),
+        )
 
 
 def record_audio() -> np.ndarray:
@@ -859,6 +875,7 @@ def main():
             notify_fallback_usage(
                 os.environ.get("VOXPASTE_PROVIDER", "mistral").lower(),
                 transcription_result.provider_name,
+                transcription_result.primary_error or "Unknown error",
             )
 
         print(f"\nTranscription:\n{transcription}")
