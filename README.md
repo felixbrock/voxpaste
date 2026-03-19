@@ -129,6 +129,17 @@ Voxpaste supports multiple speech-to-text providers. Set `VOXPASTE_PROVIDER` to 
 
 **Recommended:** Use Mistral or Groq for the fastest transcription experience.
 
+### Fallback Provider
+
+You can configure an automatic fallback STT provider with `VOXPASTE_FALLBACK_PROVIDER`. If the primary provider fails after all built-in retries, Voxpaste will resend the same recorded audio to the fallback provider instead of discarding the recording.
+
+```bash
+VOXPASTE_PROVIDER=mistral
+VOXPASTE_FALLBACK_PROVIDER=groq
+```
+
+The fallback provider must be different from the primary provider and must have its corresponding API key configured. When fallback transcription succeeds, Voxpaste also raises a best-effort system notification so you know a backup provider was used.
+
 ### Choosing a Model
 
 You can customize which model to use for each provider by setting the corresponding environment variable:
@@ -208,7 +219,8 @@ voxpaste
 2. Speak your instructions
 3. Press `Enter` to stop recording
 4. The audio is sent to your configured provider for transcription
-5. The transcription is printed and copied to your clipboard
+5. If that provider fails after retries and a fallback is configured, the same audio is retried with the fallback provider
+6. The transcription is printed and copied to your clipboard
 
 The last transcription is also saved to `~/.cache/voxpaste/last_transcription.txt`.
 

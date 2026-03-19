@@ -4,6 +4,7 @@
 import argparse
 import io
 import os
+import platform
 import subprocess
 import sys
 import time
@@ -31,6 +32,15 @@ MAX_API_ATTEMPTS = 3
 
 class VoxPasteError(Exception):
     """Raised when VoxPaste encounters a user-facing error."""
+
+
+class TranscriptionResult:
+    """Structured result for a completed transcription."""
+
+    def __init__(self, text: str, provider_name: str, used_fallback: bool = False):
+        self.text = text
+        self.provider_name = provider_name
+        self.used_fallback = used_fallback
 
 
 def request_with_retries(
@@ -530,15 +540,16 @@ Output ONLY the cleaned text with no explanations."""
         )
 
 
-def get_provider() -> Provider:
-    """Get the configured STT provider."""
+def load_config() -> Path:
+    """Load environment configuration and return the env file path."""
     env_file = CONFIG_DIR / ".env"
     load_dotenv(env_file)
+    return env_file
 
-    provider_name = os.environ.get("VOXPASTE_PROVIDER", "mistral").lower()
 
-    print(f"Using provider: {provider_name}")
-
+def build_provider(provider_name: str, env_file: Path) -> Provider:
+    """Instantiate an STT provider from environment configuration."""
+    provider_name = provider_name.lower()
     if provider_name not in PROVIDERS:
         raise VoxPasteError(
             f"Unknown provider '{provider_name}'\n"
@@ -575,23 +586,34 @@ def get_provider() -> Provider:
             f"Either set it in {env_file} or as an environment variable"
         )
 
-    # Get custom model if specified
     model_env_name = model_env_map[provider_name]
     model = os.environ.get(model_env_name)
+    return provider_classes[provider_name](api_key, model)
 
-    provider = provider_classes[provider_name](api_key, model)
 
-    # Show which model is being used
-    if hasattr(provider, "model"):
-        print(f"Using model: {provider.model}")
+def get_provider_config() -> tuple[str, Provider, str | None, Provider | None]:
+    """Get the configured primary and optional fallback STT providers."""
+    env_file = load_config()
 
-    return provider
+    provider_name = os.environ.get("VOXPASTE_PROVIDER", "mistral").lower()
+    provider = build_provider(provider_name, env_file)
+
+    fallback_name = os.environ.get("VOXPASTE_FALLBACK_PROVIDER")
+    fallback_provider = None
+    if fallback_name is not None:
+        fallback_name = fallback_name.lower()
+        if fallback_name == provider_name:
+            raise VoxPasteError(
+                "VOXPASTE_FALLBACK_PROVIDER must differ from VOXPASTE_PROVIDER"
+            )
+        fallback_provider = build_provider(fallback_name, env_file)
+
+    return provider_name, provider, fallback_name, fallback_provider
 
 
 def get_cleaning_provider() -> CleaningProvider:
     """Get the configured cleaning LLM provider."""
-    env_file = CONFIG_DIR / ".env"
-    load_dotenv(env_file)
+    env_file = load_config()
 
     # Default to the STT provider if not specified
     provider_name = os.environ.get("VOXPASTE_CLEANING_PROVIDER")
@@ -646,6 +668,85 @@ def get_cleaning_provider() -> CleaningProvider:
         print(f"Using cleaning model: {cleaning_provider.model}")
 
     return cleaning_provider
+
+
+def notify_fallback_usage(primary_provider: str, fallback_provider: str) -> None:
+    """Best-effort system notification when fallback transcription succeeds."""
+    title = "VoxPaste used fallback transcription"
+    message = (
+        f"Primary provider '{primary_provider}' failed. "
+        f"Transcribed with fallback provider '{fallback_provider}'."
+    )
+
+    commands: list[list[str]] = []
+    system = platform.system()
+    if system == "Darwin":
+        safe_title = title.replace('"', '\\"')
+        safe_message = message.replace('"', '\\"')
+        commands = [
+            [
+                "osascript",
+                "-e",
+                f'display notification "{safe_message}" with title "{safe_title}"',
+            ]
+        ]
+    elif system == "Linux":
+        commands = [["notify-send", title, message]]
+
+    for cmd in commands:
+        try:
+            subprocess.run(
+                cmd,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            continue
+
+    print(
+        (
+            "Warning: Could not send system notification about fallback provider "
+            f"usage ({fallback_provider})"
+        ),
+        file=sys.stderr,
+    )
+
+
+def transcribe_with_fallback(audio_bytes: bytes) -> TranscriptionResult:
+    """Transcribe audio with an optional fallback provider."""
+    provider_name, provider, fallback_name, fallback_provider = get_provider_config()
+
+    print(f"Using provider: {provider_name}")
+    if hasattr(provider, "model"):
+        print(f"Using model: {provider.model}")
+
+    try:
+        return TranscriptionResult(provider.transcribe(audio_bytes), provider_name)
+    except VoxPasteError as primary_error:
+        if fallback_provider is None or fallback_name is None:
+            raise
+
+        print(
+            f"Primary provider '{provider_name}' failed: {primary_error}",
+            file=sys.stderr,
+        )
+        print(f"Falling back to provider: {fallback_name}")
+        if hasattr(fallback_provider, "model"):
+            print(f"Using fallback model: {fallback_provider.model}")
+
+        try:
+            text = fallback_provider.transcribe(audio_bytes)
+        except VoxPasteError as fallback_error:
+            raise VoxPasteError(
+                f"Primary provider '{provider_name}' failed and fallback provider "
+                f"'{fallback_name}' also failed.\n\n"
+                f"Primary error: {primary_error}\n\n"
+                f"Fallback error: {fallback_error}"
+            ) from fallback_error
+
+        return TranscriptionResult(text, fallback_name, used_fallback=True)
 
 
 def record_audio() -> np.ndarray:
@@ -743,8 +844,6 @@ def main():
     args = parser.parse_args()
 
     try:
-        provider = get_provider()
-
         audio_data = record_audio()
 
         duration = len(audio_data) / SAMPLE_RATE
@@ -753,7 +852,14 @@ def main():
         audio_bytes = audio_to_wav_bytes(audio_data)
 
         print("Transcribing...")
-        transcription = provider.transcribe(audio_bytes)
+        transcription_result = transcribe_with_fallback(audio_bytes)
+        transcription = transcription_result.text
+
+        if transcription_result.used_fallback:
+            notify_fallback_usage(
+                os.environ.get("VOXPASTE_PROVIDER", "mistral").lower(),
+                transcription_result.provider_name,
+            )
 
         print(f"\nTranscription:\n{transcription}")
 
